@@ -1,12 +1,71 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.TrackMyTraining" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+
+    <style name="Base.Theme.TrackMyTraining" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary brand colors -->
+        <item name="colorPrimary">@color/md_theme_dark_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_dark_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_dark_onPrimaryContainer</item>
+
+        <!-- Secondary colors -->
+        <item name="colorSecondary">@color/md_theme_dark_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_dark_onSecondary</item>
+
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/md_theme_dark_background</item>
+        <item name="colorSurface">@color/md_theme_dark_surface</item>
+        <item name="colorSurfaceVariant">@color/md_theme_dark_surfaceVariant</item>
+        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_dark_onSurfaceVariant</item>
+        <item name="colorSurfaceContainerHigh">@color/md_theme_dark_surfaceContainer</item>
+
+        <!-- Outline -->
+        <item name="colorOutline">@color/md_theme_dark_outline</item>
+        <item name="colorOutlineVariant">@color/md_theme_dark_outlineVariant</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/md_theme_dark_error</item>
+        <item name="colorOnError">@color/md_theme_dark_onError</item>
+
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/md_theme_dark_background</item>
+        <item name="android:navigationBarColor">@color/md_theme_dark_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+
+        <!-- TextInputLayout default style -->
+        <item name="textInputStyle">@style/Widget.TrackMyTraining.TextInputLayout</item>
+
+        <!-- MaterialButton default style -->
+        <item name="materialButtonStyle">@style/Widget.TrackMyTraining.Button</item>
     </style>
+
+    <!-- Custom TextInputLayout Style -->
+    <style name="Widget.TrackMyTraining.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/md_theme_dark_surfaceVariant</item>
+        <item name="boxStrokeColor">@color/md_theme_dark_primary</item>
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="hintTextColor">@color/md_theme_dark_primary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+        <item name="boxStrokeWidth">1dp</item>
+    </style>
+
+    <!-- Custom MaterialButton Style -->
+    <style name="Widget.TrackMyTraining.Button" parent="Widget.Material3.Button">
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@color/md_theme_dark_primary</item>
+        <item name="android:textColor">@color/md_theme_dark_onPrimary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- Calendar text style -->
     <style name="TextoCalendarioBlanco">
-        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColor">@color/text_primary</item>
         <item name="android:textSize">14sp</item>
     </style>
+
     <style name="Theme.TrackMyTraining" parent="Base.Theme.TrackMyTraining" />
 </resources>

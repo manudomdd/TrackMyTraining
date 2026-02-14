@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">TrackMyTraining</string>
+    <string name="app_title">Track My Training</string>
+    <string name="select_date_subtitle">Selecciona la fecha del entreno</string>
+    <string name="registrar_serie_label">Registrar Serie</string>
+    <string name="registro_subtitle">Registra tus series</string>
+    <string name="hint_ejercicio">Ejercicio</string>
+    <string name="hint_serie">Serie #</string>
+    <string name="hint_reps">Reps</string>
+    <string name="hint_peso">Peso (kg)</string>
+    <string name="hint_rir">RIR</string>
+    <string name="btn_add_serie">AÑADIR SERIE</string>
+    <string name="historial_label">Historial de hoy</string>
+    <string name="btn_delete_selected">ELIMINAR SELECCIONADOS</string>
 </resources>
