@@ -4,12 +4,35 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.CalendarView;
-import android.widget.Toast;
 
+/**
+ * Actividad principal de la aplicación TrackMyTraining.
+ * <p>
+ * Presenta un {@link CalendarView} que permite al usuario seleccionar una fecha
+ * para registrar o consultar sus entrenamientos. Al seleccionar una fecha,
+ * se navega automáticamente a {@link RegistroActivity} enviando la fecha
+ * seleccionada como extra del Intent.
+ * </p>
+ *
+ * @author Manuel Dominguez
+ * @version 1.0
+ * @see RegistroActivity
+ */
 public class MainActivity extends AppCompatActivity {
 
+    /** Vista de calendario para la selección de fecha del entrenamiento. */
     CalendarView calendarView;
 
+    /**
+     * Inicializa la actividad, configura el layout y establece el listener
+     * del calendario para detectar cambios de fecha.
+     * <p>
+     * Cuando el usuario selecciona una fecha, se formatea como "dd/M/yyyy"
+     * y se envía a {@link RegistroActivity} mediante un Intent con la clave "FECHA".
+     * </p>
+     *
+     * @param savedInstanceState Estado guardado de la instancia anterior, o null si es nueva.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
