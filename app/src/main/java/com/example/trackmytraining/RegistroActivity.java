@@ -24,7 +24,9 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -38,10 +40,10 @@ import java.util.Set;
  *
  * <h3>Funcionalidades principales:</h3>
  * <ul>
- *     <li>Registro de series con auto-incremento del número de serie.</li>
- *     <li>Visualización del historial del día en tarjetas individuales.</li>
- *     <li>Eliminación individual mediante pulsación larga.</li>
- *     <li>Eliminación múltiple mediante checkboxes y botón de borrado.</li>
+ * <li>Registro de series con auto-incremento del número de serie.</li>
+ * <li>Visualización del historial del día AGRUPADO POR EJERCICIO.</li>
+ * <li>Eliminación individual mediante pulsación larga.</li>
+ * <li>Eliminación múltiple mediante checkboxes y botón de borrado.</li>
  * </ul>
  *
  * <p>
@@ -50,7 +52,7 @@ import java.util.Set;
  * </p>
  *
  * @author Manuel Dominguez
- * @version 2.0
+ * @version 3.0 (Agrupación por tipo de ejercicio)
  * @see MainActivity
  * @see AdminSQLiteOpenHelper
  */
@@ -65,7 +67,10 @@ public class RegistroActivity extends AppCompatActivity {
     /** Botón para guardar una nueva serie. */
     View btnGuardar;
 
-    /** Botón para eliminar las series seleccionadas (visible solo cuando hay selección). */
+    /**
+     * Botón para eliminar las series seleccionadas (visible solo cuando hay
+     * selección).
+     */
     MaterialButton btnEliminarSeleccionados;
 
     /** Contenedor donde se añaden dinámicamente las tarjetas de cada serie. */
@@ -78,16 +83,40 @@ public class RegistroActivity extends AppCompatActivity {
     AdminSQLiteOpenHelper dbHelper;
 
     /**
-     * Conjunto de IDs de las series actualmente seleccionadas para borrado múltiple.
+     * Conjunto de IDs de las series actualmente seleccionadas para borrado
+     * múltiple.
      * Se utiliza un {@link HashSet} para garantizar unicidad y búsqueda en O(1).
      */
     Set<Integer> selectedIds = new HashSet<>();
 
     /**
+     * Clase interna para representar los datos de una serie.
+     * Facilita el manejo y agrupación de los datos.
+     */
+    private static class SerieRegistro {
+        int id;
+        String ejercicio;
+        String numSerie;
+        String reps;
+        double peso;
+        double rir;
+
+        public SerieRegistro(int id, String ejercicio, String numSerie, String reps, double peso, double rir) {
+            this.id = id;
+            this.ejercicio = ejercicio;
+            this.numSerie = numSerie;
+            this.reps = reps;
+            this.peso = peso;
+            this.rir = rir;
+        }
+    }
+
+    /**
      * Inicializa la actividad: enlaza las vistas, configura la base de datos,
      * recupera la fecha del Intent y establece los listeners de los botones.
      *
-     * @param savedInstanceState Estado guardado de la instancia anterior, o null si es nueva.
+     * @param savedInstanceState Estado guardado de la instancia anterior, o null si
+     *                           es nueva.
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,11 +178,13 @@ public class RegistroActivity extends AppCompatActivity {
         String pesoStr = etPeso.getText().toString();
         String rirStr = etRir.getText().toString();
 
-        if(!ejercicio.isEmpty() && !serieStr.isEmpty() && !repsStr.isEmpty()){
+        if (!ejercicio.isEmpty() && !serieStr.isEmpty() && !repsStr.isEmpty()) {
             int serie = Integer.parseInt(serieStr);
             int reps = Integer.parseInt(repsStr);
             double peso = pesoStr.isEmpty() ? 0.0 : Double.parseDouble(pesoStr);
-            double rir = rirStr.isEmpty() ? 0.0 : Double.parseDouble(rirStr);
+            // Si el campo RIR está vacío, guardamos -1.0 para diferenciarlo de un 0
+            // explícito (Fallo)
+            double rir = rirStr.isEmpty() ? -1.0 : Double.parseDouble(rirStr);
 
             dbHelper.agregarSerie(fechaRecibida, ejercicio, serie, reps, peso, rir);
             Toast.makeText(this, "Serie Agregada", Toast.LENGTH_SHORT).show();
@@ -172,10 +203,13 @@ public class RegistroActivity extends AppCompatActivity {
     /**
      * Carga y muestra todas las series registradas para la fecha actual.
      * <p>
-     * Elimina todas las vistas existentes del contenedor, reinicia la selección
-     * y consulta la base de datos ordenando por ID ascendente (orden cronológico
-     * de inserción). Por cada registro encontrado, crea una tarjeta visual
-     * mediante {@link #crearTarjetaSerie(int, String, String, String, double, double)}.
+     * Consulta la base de datos, agrupa las series por nombre de ejercicio
+     * y genera las tarjetas correspondientes.
+     * <br>
+     * Estructura visual:
+     * CardView (Por Ejercicio)
+     * Titulo Ejercicio
+     * Lista de Series (Filas)
      * </p>
      */
     private void cargarTabla() {
@@ -183,129 +217,160 @@ public class RegistroActivity extends AppCompatActivity {
         selectedIds.clear();
         actualizarBotonEliminar();
 
+        // 1. Obtener todos los registros
+        List<SerieRegistro> listaSeries = new ArrayList<>();
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         Cursor fila = db.rawQuery(
                 "SELECT id, ejercicio, num_serie, repeticiones, peso, rir " +
-                "FROM entrenamientos WHERE fecha = ? ORDER BY id ASC",
-                new String[]{fechaRecibida}
-        );
+                        "FROM entrenamientos WHERE fecha = ? ORDER BY id ASC",
+                new String[] { fechaRecibida });
 
-        while(fila.moveToNext()){
-            int idRegistro = fila.getInt(0);
-            String nom = fila.getString(1);
-            String num = fila.getString(2);
-            String rep = fila.getString(3);
-            double peso = fila.getDouble(4);
-            double rir = fila.getDouble(5);
-
-            crearTarjetaSerie(idRegistro, nom, num, rep, peso, rir);
+        while (fila.moveToNext()) {
+            listaSeries.add(new SerieRegistro(
+                    fila.getInt(0),
+                    fila.getString(1),
+                    fila.getString(2),
+                    fila.getString(3),
+                    fila.getDouble(4),
+                    fila.getDouble(5)));
         }
         fila.close();
         db.close();
+
+        // 2. Agrupar por nombre de ejercicio (LinkedHashMap para mantener orden de
+        // inserción/aparición)
+        Map<String, List<SerieRegistro>> grupos = new LinkedHashMap<>();
+        for (SerieRegistro serie : listaSeries) {
+            String nombreNormalizado = serie.ejercicio.trim(); // Podríamos normalizar más si fuera necesario
+            if (!grupos.containsKey(nombreNormalizado)) {
+                grupos.put(nombreNormalizado, new ArrayList<>());
+            }
+            grupos.get(nombreNormalizado).add(serie);
+        }
+
+        // 3. Generar UI por cada grupo
+        for (Map.Entry<String, List<SerieRegistro>> entrada : grupos.entrySet()) {
+            crearTarjetaGrupoEjercicio(entrada.getKey(), entrada.getValue());
+        }
     }
 
     /**
-     * Crea programáticamente una tarjeta visual ({@link CardView}) para una serie.
-     * <p>
-     * Cada tarjeta contiene:
-     * <ul>
-     *     <li>Un {@link CheckBox} para selección múltiple (tintado en color primario).</li>
-     *     <li>Nombre del ejercicio en negrita y detalles (peso × reps @ RIR).</li>
-     *     <li>Badge del número de serie en color primario.</li>
-     * </ul>
-     * Además, se registra un {@code OnLongClickListener} para la eliminación
-     * individual de la serie.
-     * </p>
+     * Crea una tarjeta visual (CardView) que agrupa todas las series de un mismo
+     * ejercicio.
      *
-     * @param id   Identificador único de la serie en la base de datos.
-     * @param nom  Nombre del ejercicio.
-     * @param num  Número de la serie (como String).
-     * @param rep  Número de repeticiones (como String).
-     * @param peso Peso utilizado en kilogramos.
-     * @param rir  Repeticiones en reserva.
+     * @param nombreEjercicio Nombre del ejercicio.
+     * @param series          Lista de objetos {@link SerieRegistro} pertenecientes
+     *                        a este ejercicio.
      */
-    private void crearTarjetaSerie(int id, String nom, String num, String rep, double peso, double rir) {
-        // --- CARDVIEW CONTAINER ---
+    private void crearTarjetaGrupoEjercicio(String nombreEjercicio, List<SerieRegistro> series) {
+        // --- CARDVIEW CONTAINER DEL GRUPO ---
         CardView card = new CardView(this);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         cardParams.setMargins(0, 0, 0, 24);
         card.setLayoutParams(cardParams);
-        card.setCardBackgroundColor(Color.parseColor("#1A1A1A"));
-        card.setRadius(40f);
-        card.setCardElevation(0f);
+        card.setCardBackgroundColor(Color.parseColor("#1E1E1E")); // Un poco mas claro que el fondo
+        card.setRadius(24f);
+        card.setCardElevation(4f);
 
-        // Layout horizontal del contenido
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.HORIZONTAL);
-        content.setPadding(24, 28, 32, 28);
-        content.setGravity(Gravity.CENTER_VERTICAL);
-        card.addView(content);
+        // Layout vertical principal dentro de la tarjeta
+        LinearLayout mainLayout = new LinearLayout(this);
+        mainLayout.setOrientation(LinearLayout.VERTICAL);
+        mainLayout.setPadding(0, 0, 0, 16); // Padding abajo
+        card.addView(mainLayout);
 
-        // Checkbox para selección múltiple
+        // --- CABECERA (Nombre del Ejercicio) ---
+        TextView tvTitulo = new TextView(this);
+        tvTitulo.setText(nombreEjercicio);
+        tvTitulo.setTextColor(Color.parseColor("#D0BCFF")); // Color primario
+        tvTitulo.setTextSize(18f);
+        tvTitulo.setTypeface(null, Typeface.BOLD);
+        tvTitulo.setPadding(24, 24, 24, 16);
+        tvTitulo.setBackgroundColor(Color.parseColor("#252525")); // Fondo cabecera distinguido
+        mainLayout.addView(tvTitulo);
+
+        // --- LISTA DE SERIES (Iterar) ---
+        for (SerieRegistro serie : series) {
+            View rowView = crearFilaSerie(serie);
+            mainLayout.addView(rowView);
+        }
+
+        llContenedorTabla.addView(card);
+    }
+
+    /**
+     * Crea una vista de fila para una serie individual dentro del grupo.
+     * <p>
+     * Contiene CheckBox para selección, detalles de la serie y permite LongClick
+     * para borrar.
+     * </p>
+     *
+     * @param serie Objeto con los datos de la serie.
+     * @return Vista (LinearLayout) configurada.
+     */
+    private View crearFilaSerie(final SerieRegistro serie) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(24, 12, 24, 12);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // Checkbox
         CheckBox checkBox = new CheckBox(this);
         checkBox.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#D0BCFF")));
-        LinearLayout.LayoutParams cbParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        cbParams.setMarginEnd(16);
-        checkBox.setLayoutParams(cbParams);
         checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    selectedIds.add(id);
+                    selectedIds.add(serie.id);
                 } else {
-                    selectedIds.remove(id);
+                    selectedIds.remove(serie.id);
                 }
                 actualizarBotonEliminar();
             }
         });
+        row.addView(checkBox);
 
-        // Columna de información (nombre del ejercicio + detalles)
-        LinearLayout infoLayout = new LinearLayout(this);
-        infoLayout.setOrientation(LinearLayout.VERTICAL);
-        infoLayout.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        // Info de la serie: "#1: 100kg x 10 reps @ RIR 2"
+        TextView tvInfo = new TextView(this);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Serie ").append(serie.numSerie).append(":  ");
+        sb.append(serie.peso).append("kg  x  ").append(serie.reps).append(" reps");
 
-        TextView tvNom = new TextView(this);
-        tvNom.setText(nom);
-        tvNom.setTextColor(Color.parseColor("#E6E1E5"));
-        tvNom.setTypeface(null, Typeface.BOLD);
-        tvNom.setTextSize(16f);
-
-        TextView tvDetails = new TextView(this);
-        String detailsText = peso + "kg x " + rep + " reps";
-        if (rir > 0) {
-            detailsText += " @ RIR " + rir;
+        // MOSTRAR RIR SI ES MAYOR O IGUAL A 0 (Es decir, si el usuario lo introdujo
+        // explícitamente o es un dato antiguo)
+        if (serie.rir >= 0) {
+            // Formatear para quitar el decimal si es entero (ej: "0.0" -> "0")
+            String rirTexto = (serie.rir == (long) serie.rir)
+                    ? String.format("%d", (long) serie.rir)
+                    : String.valueOf(serie.rir);
+            sb.append("  @ RIR ").append(rirTexto);
         }
-        tvDetails.setText(detailsText);
-        tvDetails.setTextColor(Color.parseColor("#CAC4D0"));
-        tvDetails.setTextSize(14f);
-        tvDetails.setPadding(0, 8, 0, 0);
 
-        infoLayout.addView(tvNom);
-        infoLayout.addView(tvDetails);
+        tvInfo.setText(sb.toString());
+        tvInfo.setTextColor(Color.parseColor("#E6E1E5"));
+        tvInfo.setTextSize(15f);
+        tvInfo.setPadding(16, 0, 0, 0);
 
-        // Badge del número de serie
-        TextView tvSerie = new TextView(this);
-        tvSerie.setText("#" + num);
-        tvSerie.setTextColor(Color.parseColor("#D0BCFF"));
-        tvSerie.setTypeface(null, Typeface.BOLD);
-        tvSerie.setTextSize(18f);
-        tvSerie.setPadding(16, 0, 0, 0);
+        // Hacer que el texto ocupe el espacio restante para que el long click sea facil
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        tvInfo.setLayoutParams(textParams);
 
-        // Ensamblar: checkbox + info + badge
-        content.addView(checkBox);
-        content.addView(infoLayout);
-        content.addView(tvSerie);
+        row.addView(tvInfo);
 
-        // Pulsación larga para eliminar serie individual
-        card.setOnLongClickListener(new View.OnLongClickListener() {
+        // Funcionalidad Long Click para borrar individualmente
+        row.setLongClickable(true);
+        row.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                mostrarDialogoEliminar(id, nom, num);
+                mostrarDialogoEliminar(serie.id, serie.ejercicio, serie.numSerie);
                 return true;
             }
         });
 
-        llContenedorTabla.addView(card);
+        return row;
     }
 
     /**
@@ -326,25 +391,27 @@ public class RegistroActivity extends AppCompatActivity {
     }
 
     /**
-     * Muestra un diálogo de confirmación para eliminar todas las series seleccionadas.
+     * Muestra un diálogo de confirmación para eliminar todas las series
+     * seleccionadas.
      * <p>
      * Al confirmar, delega la eliminación en
      * {@link AdminSQLiteOpenHelper#eliminarVariasSeries(List)} y recarga la tabla.
-     * El mensaje del diálogo se adapta gramaticalmente al número de series
-     * seleccionadas (singular/plural).
      * </p>
      */
     private void mostrarDialogoEliminarSeleccionados() {
         int count = selectedIds.size();
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Eliminar");
-        builder.setMessage("¿Borrar " + count + " serie" + (count > 1 ? "s" : "") + " seleccionada" + (count > 1 ? "s" : "") + "?");
+        builder.setMessage("¿Borrar " + count + " serie" + (count > 1 ? "s" : "") + " seleccionada"
+                + (count > 1 ? "s" : "") + "?");
         builder.setPositiveButton("Borrar", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 List<Integer> idsToDelete = new ArrayList<>(selectedIds);
                 dbHelper.eliminarVariasSeries(idsToDelete);
-                Toast.makeText(RegistroActivity.this, count + " serie" + (count > 1 ? "s" : "") + " eliminada" + (count > 1 ? "s" : ""), Toast.LENGTH_SHORT).show();
+                Toast.makeText(RegistroActivity.this,
+                        count + " serie" + (count > 1 ? "s" : "") + " eliminada" + (count > 1 ? "s" : ""),
+                        Toast.LENGTH_SHORT).show();
                 cargarTabla();
             }
         });
@@ -355,9 +422,7 @@ public class RegistroActivity extends AppCompatActivity {
     /**
      * Muestra un diálogo de confirmación para eliminar una serie individual.
      * <p>
-     * Se invoca mediante pulsación larga sobre la tarjeta de la serie.
-     * Al confirmar, delega la eliminación en
-     * {@link AdminSQLiteOpenHelper#eliminarSerie(int)} y recarga la tabla.
+     * Se invoca mediante pulsación larga sobre la fila de la serie.
      * </p>
      *
      * @param idEliminar      Identificador único de la serie a eliminar.
